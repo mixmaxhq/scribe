@@ -184,6 +184,18 @@ this behaviour Scribe needs to manipulate the DOM once again.
 The undo stack breaks whenever DOM manipulation is used instead of the native
 command API, therefore we have to use our own.
 
+#### Our undo algorithm
+
+A history item is pushed whenever:
+
+* the user creates a new line
+* the user finishes a word
+* the user switches typing direction e.g. starts deleting text after having
+  added text, or starts adding text after having deleted text
+* the user presses undo (so that they can return to that state with redo)
+* the DOM is modified by a command/Scribe's formatters
+* 250ms pass while the user continues to press the delete key.
+
 [browser inconsistencies]: https://github.com/guardian/scribe/blob/master/BROWSERINCONSISTENCIES.md
 [Executing Commands]: https://developer.mozilla.org/en-US/docs/Rich-Text_Editing_in_Mozilla#Executing_Commands
 [Range API]: https://developer.mozilla.org/en-US/docs/Web/API/Range
