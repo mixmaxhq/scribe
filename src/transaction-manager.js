@@ -12,6 +12,11 @@ define(['lodash-amd/modern/objects/assign'], function (assign) {
         if (recordTransaction === undefined) {
           recordTransaction = true;
         }
+        if (recordTransaction && (this.history.length === 0)) {
+          // Note that `pushHistory` will not push an item if the content
+          // hasn't changed since the last save.
+          scribe.pushHistory();
+        }
 
         this.history.push(recordTransaction);
       },
@@ -28,19 +33,21 @@ define(['lodash-amd/modern/objects/assign'], function (assign) {
       },
 
       /**
-       * Runs the specified transaction, then triggers 'content-changed'
-       * and optionally records an undo item.
+       * Runs the specified transaction, then triggers 'content-changed',
+       * optionally recording undo items before and after running the
+       * transaction.
        *
-       * Nested transactions are supported. 'content-changed' will be triggered,
-       * and an undo item recorded (if appropriate), after the transaction
-       * stack unwinds.
+       * Nested transactions are supported. An undo item will be recorded (if
+       * appropriate) before the root transaction begins; 'content-changed' will
+       * be triggered and another undo item recorded (if appropriate) after the
+       * transaction stack unwinds.
        *
        * @param {function=} transaction - An arbitrary function to run.
        *    Can be `null` or `undefined` to manually trigger 'content-changed'
-       *    and record an undo item.
-       * @param {boolean=} recordTransaction - Whether to record an undo item
-       *    after the transaction has been run. Defaults to `true`. This is
-       *    ignored if _transaction_ is nested--the value for the root
+       *    and record undo items.
+       * @param {boolean=} recordTransaction - Whether to record undo items
+       *    before and after running the transaction. Defaults to `true`. This
+       *    is ignored if _transaction_ is nested--the value for the root
        *    transaction determines whether the stack will be recorded
        *    or not when the stack unwinds.
        */
