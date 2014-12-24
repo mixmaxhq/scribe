@@ -7,6 +7,11 @@ define(function () {
       var undoCommand = new scribe.api.Command('undo');
 
       undoCommand.execute = function () {
+        // Save the current state to return to if the user hits redo.
+        // Note that `pushHistory` will not push an item if the content
+        // hasn't changed since the last save.
+        scribe.pushHistory();
+
         var historyItem = scribe.undoManager.undo();
 
         if (typeof historyItem !== 'undefined') {
