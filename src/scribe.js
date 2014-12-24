@@ -12,6 +12,7 @@ define([
   './api',
   './transaction-manager',
   './undo-manager',
+  './typing-history-manager',
   './event-emitter',
   './element',
   './node',
@@ -30,6 +31,7 @@ define([
   Api,
   buildTransactionManager,
   buildUndoManager,
+  buildTypingHistoryManager,
   EventEmitter,
   elementHelpers,
   nodeHelpers,
@@ -64,6 +66,9 @@ define([
     var UndoManager = buildUndoManager(this);
     this.undoManager = new UndoManager();
 
+    var TypingHistoryManager = buildTypingHistoryManager(this);
+    this.typingHistoryManager = new TypingHistoryManager();
+
     this.el.setAttribute('contenteditable', true);
 
     this.el.addEventListener('input', function () {
@@ -71,9 +76,16 @@ define([
        * This event triggers when either the user types something or a native
        * command is executed which causes the content to change (i.e.
        * `document.execCommand('bold')`). We can't wrap a transaction around
-       * these actions, so instead we run the transaction in this event.
+       * the latter actions, so we instead run a transaction (for both sorts
+       * of changes) in this event.
+       *
+       * We don't _record_ typing-related transactions here, though, because
+       * the relevant history changes have been saved (if appropriate) by the
+       * typing history manager.
        */
-      this.transactionManager.run();
+      var recordTransaction = !this.typingHistoryManager.popEvent();
+
+      this.transactionManager.run(null, recordTransaction);
     }.bind(this), false);
 
     /**

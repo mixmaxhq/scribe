@@ -8,21 +8,44 @@ define(['lodash-amd/modern/objects/assign'], function (assign) {
     }
 
     assign(TransactionManager.prototype, {
-      start: function () {
-        this.history.push(1);
+      start: function (recordTransaction) {
+        if (recordTransaction === undefined) {
+          recordTransaction = true;
+        }
+
+        this.history.push(recordTransaction);
       },
 
       end: function () {
-        this.history.pop();
+        var recordTransaction = this.history.pop();
 
         if (this.history.length === 0) {
-          scribe.pushHistory();
+          if (recordTransaction) {
+            scribe.pushHistory();
+          }
           scribe.trigger('content-changed');
         }
       },
 
-      run: function (transaction) {
-        this.start();
+      /**
+       * Runs the specified transaction, then triggers 'content-changed'
+       * and optionally records an undo item.
+       *
+       * Nested transactions are supported. 'content-changed' will be triggered,
+       * and an undo item recorded (if appropriate), after the transaction
+       * stack unwinds.
+       *
+       * @param {function=} transaction - An arbitrary function to run.
+       *    Can be `null` or `undefined` to manually trigger 'content-changed'
+       *    and record an undo item.
+       * @param {boolean=} recordTransaction - Whether to record an undo item
+       *    after the transaction has been run. Defaults to `true`. This is
+       *    ignored if _transaction_ is nested--the value for the root
+       *    transaction determines whether the stack will be recorded
+       *    or not when the stack unwinds.
+       */
+      run: function (transaction, recordTransaction) {
+        this.start(recordTransaction);
         // If there is an error, don't prevent the transaction from ending.
         try {
           if (transaction) {
