@@ -79,18 +79,28 @@ define([
        * the latter actions, so we instead run a transaction (for both sorts
        * of changes) in this event.
        *
-       * We don't _record_ typing-related transactions here, though, because
-       * the relevant history changes have been saved (if appropriate) by the
-       * typing history manager.
+       * We defer the transaction until the next turn of the event loop in case
+       * this input event caused a DOM mutation, so that when the mutation
+       * observer fires (after this event), this transaction and the formatter
+       * transaction will be applied together. This will consolidate
+       * 'content-changed' events and undo items.
+       *
+       * TODO: Have the mutation observer listen to node modification events, not just additions and
+       * deletions. That would allow this input listener to be replaced entirely.
+       * https://github.com/guardian/scribe/issues/144
        */
       var recordMode;
       if (this.typingHistoryManager.popEvent()) {
+        // This transaction is typing-related--don't record an undo item,
+        // because the relevant history changes have been saved (if appropriate)
+        // by the typing history manager.
         recordMode = 'skip';
       } else {
-        recordMode = 'push';
+        // This transaction is command-related--replace the last history item
+        // (created by the command) with that created by the formatters.
+        recordMode = 'replace';
       }
-
-      this.transactionManager.run(null, recordMode);
+      this.transactionManager.runDeferred(null, recordMode, 0);
     }.bind(this), false);
 
     /**
