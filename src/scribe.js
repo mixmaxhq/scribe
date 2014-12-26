@@ -186,31 +186,57 @@ define([
     return this.el.textContent;
   };
 
-  Scribe.prototype.pushHistory = function () {
+  Scribe.prototype.pushHistory = function (amendIfOnlyCursorChanged) {
+    /**
+     * Chrome and Firefox: If the selection is collapsed and we execute a command, then modify the
+     * DOM in any way, e.g. by placing/removing the markers, it will break browser magic around
+     * `Document.queryCommandState` (http://jsbin.com/eDOxacI/1/edit?js,console,output). So, only
+     * create an undo item if necessary--if the content and/or cursor position has changed.
+     *
+     * Note that we need to create an undo item in order to check whether the cursor position has
+     * changed, hence clients being able to control this check using _amendIfOnlyCursorChanged_.
+     * We generally do want to update the cursor position when saving the history, though, hence
+     * it defaulting to `true`.
+     */
+    var createUndoItem = function() {
+      var selection = new this.api.Selection();
+      selection.placeMarkers();
+      var undoItem = this.getHTML();
+      selection.removeMarkers();
+      return undoItem;
+    }.bind(this);
+
+    if (amendIfOnlyCursorChanged === undefined) {
+      amendIfOnlyCursorChanged = true;
+    }
+
+    // We only want to push the history if the content and/or cursor position
+    // actually changed.
     var previousUndoItem = this.undoManager.stack[this.undoManager.position];
     var previousContent = previousUndoItem && previousUndoItem
-      .replace(/<em class="scribe-marker">/g, '').replace(/<\/em>/g, '');
+        .replace(/<em class="scribe-marker">/g, '').replace(/<\/em>/g, '');
 
-    /**
-     * Chrome and Firefox: If we did push to the history, this would break
-     * browser magic around `Document.queryCommandState` (http://jsbin.com/eDOxacI/1/edit?js,console,output).
-     * This happens when doing any DOM manipulation.
-     */
+    var newContent = this.getHTML();
 
-    // We only want to push the history if the content actually changed.
-    if (! previousUndoItem || (previousUndoItem && this.getHTML() !== previousContent)) {
-      var selection = new this.api.Selection();
-
-      selection.placeMarkers();
-      var html = this.getHTML();
-      selection.removeMarkers();
-
-      this.undoManager.push(html);
-
+    // The content changed if there was not a previous undo item or if the items' content differs.
+    var contentChanged = (newContent !== previousContent);
+    if (contentChanged) {
+      this.undoManager.push(createUndoItem());
       return true;
-    } else {
-      return false;
+    } else if (amendIfOnlyCursorChanged) {
+      var newUndoItem = createUndoItem();
+      // The cursor changed if the content didn't change but the undo items differ.
+      var cursorChanged = (newUndoItem !== previousUndoItem);
+      if (cursorChanged) {
+        // If the cursor did change, replace the current entry vs. pushing a new entry, since
+        // undoing a cursor change alone doesn’t make a lot of sense.
+        this.undoManager.undo();
+        this.undoManager.push(newUndoItem);
+        return true;
+      }
     }
+
+    return false;
   };
 
   Scribe.prototype.getCommand = function (commandName) {
