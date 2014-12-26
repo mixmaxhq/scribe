@@ -83,9 +83,14 @@ define([
        * the relevant history changes have been saved (if appropriate) by the
        * typing history manager.
        */
-      var recordTransaction = !this.typingHistoryManager.popEvent();
+      var recordMode;
+      if (this.typingHistoryManager.popEvent()) {
+        recordMode = 'skip';
+      } else {
+        recordMode = 'push';
+      }
 
-      this.transactionManager.run(null, recordTransaction);
+      this.transactionManager.run(null, recordMode);
     }.bind(this), false);
 
     /**

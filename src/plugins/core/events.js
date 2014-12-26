@@ -79,6 +79,7 @@ define([
           var selection = new scribe.api.Selection();
           var isEditorActive = selection.range;
 
+          // Pass content through formatters, place caret back
           var runFormatters = function () {
             if (isEditorActive) {
               selection.placeMarkers();
@@ -94,10 +95,7 @@ define([
           if (isEditorActive) {
             // Discard the last history item, as we're going to be adding
             // a new clean history item next.
-            scribe.undoManager.undo();
-
-            // Pass content through formatters, place caret back
-            scribe.transactionManager.run(runFormatters);
+            scribe.transactionManager.run(runFormatters, 'replace');
           } else {
             runFormatters();
           }
