@@ -14,8 +14,16 @@ define([
 
   'use strict';
 
-  // http://www.w3.org/TR/html-markup/syntax.html#syntax-elements
-  var html5VoidElements = ['AREA', 'BASE', 'BR', 'COL', 'COMMAND', 'EMBED', 'HR', 'IMG', 'INPUT', 'KEYGEN', 'LINK', 'META', 'PARAM', 'SOURCE', 'TRACK', 'WBR'];
+  // These are elements that cannot contain elements as content.
+  var html5ChildlessElements = [
+    // The void elements:
+    // http://www.w3.org/TR/html-markup/syntax.html#syntax-elements
+    'AREA', 'BASE', 'BR', 'COL', 'COMMAND', 'EMBED', 'HR', 'IMG', 'INPUT',
+    'KEYGEN', 'LINK', 'META', 'PARAM', 'SOURCE', 'TRACK', 'WBR',
+    // Elements from http://w3c.github.io/html-reference/elements.html#elements
+    // that can contain neither phrasing nor flow content, but only character data:
+    'IFRAME', 'OPTION', 'SCRIPT', 'STYLE', 'TEXTAREA', 'TITLE'
+  ];
 
   function parentHasNoTextContent(element, node) {
     if (element.isCaretPositionNode(node)) {
@@ -50,10 +58,10 @@ define([
     while (node) {
       if (!element.isSelectionMarkerNode(node)) {
         // Find any node that contains no child *elements*, or just contains
-        // whitespace, and is not self-closing
+        // whitespace, and *can* contain child elements
         if (isEmpty(node) &&
           node.textContent.trim() === '' &&
-          !contains(html5VoidElements, node.nodeName)) {
+          !contains(html5ChildlessElements, node.nodeName)) {
           node.appendChild(document.createElement('br'));
         } else if (node.children.length > 0) {
           traverse(element, node);
