@@ -93,11 +93,25 @@ define([
         if (typingDirectionSwitched) {
           recordEvent = true;
 
-          // Clear the character history if the user has started to delete because it won't be
-          // current when the user starts typing again (and at that point, we'll record a
-          // history event anyway).
           if (eventInfo.typingDirection === 'backward') {
+            // Clear the character history if the user has started to delete because it won't be
+            // current when the user starts typing again (and at that point, we'll record a
+            // history event anyway).
             this._lastTwoChars = [];
+          } else {
+            // Stop recording on a timeout (see below) now that the user has stopped deleting.
+            clearTimeout(this._recordTimeout);
+            this._recordTimeout = null;
+          }
+        } else if (eventInfo.typingDirection === 'backward') {
+          // As the user continues to delete text (as represented by additional delete presses past
+          // the initial press and/or holding the delete key), record to the history every 250ms.
+          if (!this._recordTimeout) {
+            this._recordTimeout = setTimeout(function() {
+              scribe.pushHistory();
+              // We'll create a new timeout on the next keydown i.e. if the user continues to delete.
+              this._recordTimeout = null;
+            }.bind(this), 250);
           }
         } else if (eventInfo.charTyped) {
           if (/[\r\n]/.test(eventInfo.charTyped)) {
