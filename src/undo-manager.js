@@ -10,7 +10,7 @@ define(function () {
       this.debug = scribe.isDebugModeEnabled();
     }
 
-    UndoManager.prototype.maxStackSize = 100;
+    UndoManager.prototype.maxStackSize = 50;
 
     UndoManager.prototype.push = function (item) {
       if (this.debug) {
