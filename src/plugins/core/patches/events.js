@@ -36,18 +36,25 @@ define([], function () {
             });
             if (containerPElement) {
               /**
-               * The 'input' event listener has already triggered
-               * and recorded the faulty content as an item in the
-               * UndoManager.  We interfere with the undoManager
-               * here to discard that history item, and let the next
-               * transaction run produce a clean one instead.
+               * The 'input' event listener has already triggered and (possibly) recorded the faulty
+               * content as an undo item. We replace that item (or create and then immediately
+               * replace an undo item) with sanitized HTML. We only run a transaction if necessary
+               * so that we don't save every deleted character (overriding the typing history
+               * manager).
                *
                * FIXME: ideally we would not trigger a
                * 'content-changed' event with faulty HTML at all, but
                * it's too late to cancel it at this stage (and it's
                * not happened yet at keydown time).
                */
-              scribe.undoManager.undo();
+              var sanitizationIsNecessary = Array.prototype.some.call(containerPElement.childNodes,
+                  function(node) {
+                return (node.nodeName === 'SPAN') ||
+                    ((node.nodeType === Node.ELEMENT_NODE) && node.style.lineHeight);
+              });
+              if (!sanitizationIsNecessary) {
+                return;
+              }
 
               scribe.transactionManager.run(function () {
                 // Store the caret position
@@ -79,7 +86,7 @@ define([], function () {
                 });
 
                 selection.selectMarkers();
-              });
+              }, 'replace');
             }
           }
         });
