@@ -9,6 +9,7 @@ define([
   'use strict';
 
   var DELETE_KEY_CODE = 8;
+  var DIACRITIC_KEY_CODE = 229;
 
   return function (scribe) {
     function TypingHistoryManager() {
@@ -31,7 +32,8 @@ define([
          * content to change).
          *
          * We record history on 'keydown' rather than 'keypress' because we
-         * need to observe when the user presses delete.
+         * need to observe when the user presses delete, and 'keypress' events
+         * don't fire for diacritics/accented characters.
          */
         scribe.el.addEventListener('keydown', this._onKeydown.bind(this));
       },
@@ -56,8 +58,11 @@ define([
           typingDirection = 'forward';
         }
 
+        var userTypedDiacritic = (e.keyCode === DIACRITIC_KEY_CODE);
+
         return {
           charTyped: charTyped,
+          userTypedDiacritic: userTypedDiacritic,
           typingDirection: typingDirection
         };
       },
@@ -76,6 +81,11 @@ define([
         var recordEvent = false;
 
         // Update the typing state from event info.
+        // Known bug: we'll record 'extra' characters when the user types diacritics, since the
+        // browser emits the same key code for diacritics _and_ the character following the
+        // diacritic (that becomes marked up by the diacritic). This is ok though because we don't
+        // care about the precise typing history as long as the user keeps typing printable
+        // characters.
         if (eventInfo.charTyped) {
           this._lastTwoChars.push(eventInfo.charTyped);
           if (this._lastTwoChars.length > 2) {
@@ -121,8 +131,11 @@ define([
             this._lastTwoChars = [];
           } else {
             if (this._lastTwoChars.length === 2) {
-              var finishedWord = /\w\W/.test(this._lastTwoChars.join(''));
-              if (finishedWord) {
+              // "token" === word + punctuation afterward. We don't try to match words alone e.g.
+              // using `/\w\W/` because JavaScript's word character classes aren't Unicode aware and
+              // capturing punctuation's probably alright actually.
+              var finishedToken = /\S\s/.test(this._lastTwoChars.join(''));
+              if (finishedToken) {
                 recordEvent = true;
                 this._lastTwoChars = [];
               }
@@ -130,7 +143,11 @@ define([
           }
         }
 
-        if (recordEvent) {
+        // If the user typed a diacritic, we have to make sure to _not_ record a history event,
+        // because that involves placing markers, which will mess up browser magic around attaching
+        // the diacritic to the following character. This is unfortunate because we'll drop some
+        // undo events, but can't avoid it.
+        if (recordEvent && !eventInfo.userTypedDiacritic) {
           scribe.pushHistory();
         }
 

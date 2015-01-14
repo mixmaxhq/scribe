@@ -8,6 +8,11 @@ define([], function () {
    * Thanks to http://stackoverflow.com/a/13127566/495611 and
    * http://stackoverflow.com/a/12467610/495611 for inspiring this function.
    *
+   * @bug The browser emits the same key code, 229 for every diacritic as well as
+   *    the character immediately following the diacritic (that becomes marked up by
+   *    the diacritic). This function merely returns 229, 'å', in such cases. Tested
+   *    in Chrome 39.0.2171.95.
+   *
    * @param {Event} e - A 'keydown' event.
    *
    * @return {number|undefined} The character code corresponding to the key
@@ -67,7 +72,10 @@ define([], function () {
         221: e.shiftKey ? 125 : 93,
 
         // '
-        222: e.shiftKey ? 34 : 39
+        222: e.shiftKey ? 34 : 39,
+
+        // Diacritic marks. See the method description.
+        229: 229
       };
 
       if (keyCodesToCharCodes.hasOwnProperty(keyCode)) {
